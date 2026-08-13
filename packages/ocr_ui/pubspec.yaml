@@ -1,0 +1,23 @@
+name: ocr_ui
+description: >
+  Layar dan widget scan siap pakai di atas ocr_core — camera preview,
+  frame overlay, confidence badge. Opsional: consumer boleh pakai
+  ocr_core langsung tanpa package ini kalau mau UI custom sendiri.
+version: 0.1.0
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+  flutter: '>=3.19.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  ocr_core:
+    path: ../ocr_core
+  camera: ^0.11.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  lints: ^4.0.0

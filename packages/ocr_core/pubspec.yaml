@@ -1,0 +1,26 @@
+name: ocr_core
+description: >
+  Core OCR logic — on-device recognition (PaddleOCR via ONNX Runtime),
+  cloud fallback, unified response contract. Tanpa opini UI, dipakai
+  langsung atau lewat ocr_ui.
+version: 0.1.0
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+  flutter: '>=3.19.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.0
+  crypto: ^3.0.3
+  path_provider: ^2.1.0
+  image: ^4.2.0
+  flutter_onnxruntime: ^1.8.0
+  web: ^1.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  lints: ^4.0.0
