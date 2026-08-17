@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 
 import 'cloud/cloud_datasource.dart';
 import 'engine/ocr_engine.dart';
@@ -64,7 +64,9 @@ class OcrClient {
         onRetry: onRetry,
       );
       _readiness = OcrReadiness.onDeviceReady;
-    } catch (_) {
+    } catch (e, stack) {
+      debugPrint('❌ PREPARE GAGAL: $e');
+      debugPrint(stack.toString());
       _readiness = OcrReadiness.cloudOnlyFallback;
       _scheduleBackgroundRetry();
     }

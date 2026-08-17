@@ -1,13 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
-
 import 'package:http/http.dart' as http;
-
 import '../models/ocr_result.dart';
 
-/// Client ke Cloud OCR API (endpoint `POST /v1/ocr/read`) — dipakai
-/// sebagai fallback saat on-device gagal/confidence rendah, dan
-/// satu-satunya jalur untuk Web (tidak ada on-device di sana).
 class CloudDataSource {
   final String baseUrl;
   final String apiKey;
@@ -21,7 +16,10 @@ class CloudDataSource {
 
   Future<OcrResult> recognize(Uint8List imageBytes) async {
     try {
-      final uri = Uri.parse('$baseUrl/v1/ocr/read');
+      // 1. Parsing URI dengan aman (memastikan trailing slash disesuaikan)
+      final normalizedBase = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+      final uri = Uri.parse('$normalizedBase/v1/ocr/read');
+
       final request = http.MultipartRequest('POST', uri)
         ..headers['Authorization'] = 'Bearer $apiKey'
         ..files.add(
@@ -31,6 +29,7 @@ class CloudDataSource {
       final streamedResponse = await request.send().timeout(timeout);
       final response = await http.Response.fromStream(streamedResponse);
 
+      // 2. Evaluasi Response Status Code
       if (response.statusCode != 200) {
         return OcrResult(
           success: false,
@@ -39,7 +38,7 @@ class CloudDataSource {
           rawText: '',
           error: OcrError(
             code: 'CLOUD_HTTP_${response.statusCode}',
-            detail: response.body,
+            detail: 'Failed with status ${response.statusCode}: ${response.reasonPhrase}',
           ),
         );
       }
