@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
-
 import 'cloud/cloud_datasource.dart';
 import 'engine/ocr_engine.dart';
 import 'engine/paddle_ocr_engine.dart';
@@ -44,20 +42,10 @@ class OcrClient {
 
   OcrReadiness get readiness => _readiness;
 
-  /// Siapkan on-device engine (download+load model). Kalau gagal setelah
-  /// semua retry habis, TIDAK throw — otomatis masuk mode cloud-only
-  /// supaya fitur scan tetap bisa dipakai (cuma butuh koneksi internet
-  /// terus selama sesi itu). Web selalu masuk cloud-only karena memang
-  /// tidak ada on-device di sana.
   Future<OcrReadiness> prepare({
     void Function(double progress)? onProgress,
     void Function(int attempt, int maxAttempts)? onRetry,
   }) async {
-    if (kIsWeb) {
-      _readiness = OcrReadiness.cloudOnlyFallback;
-      return _readiness;
-    }
-
     try {
       await _repository.initializeOnDevice(
         onModelDownloadProgress: onProgress,
@@ -65,8 +53,8 @@ class OcrClient {
       );
       _readiness = OcrReadiness.onDeviceReady;
     } catch (e, stack) {
-      debugPrint('❌ PREPARE GAGAL: $e');
-      debugPrint(stack.toString());
+      print('❌ PREPARE GAGAL (WEB): $e');
+      print(stack.toString());
       _readiness = OcrReadiness.cloudOnlyFallback;
       _scheduleBackgroundRetry();
     }
@@ -79,7 +67,7 @@ class OcrClient {
       );
 
   void _scheduleBackgroundRetry() {
-    if (kIsWeb || _backgroundRetryInProgress) return;
+    if (_backgroundRetryInProgress) return;
     _backgroundRetryInProgress = true;
 
     Future.delayed(backgroundRetryDelay, () async {

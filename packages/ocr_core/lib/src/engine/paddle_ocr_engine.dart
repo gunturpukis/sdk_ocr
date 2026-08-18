@@ -11,13 +11,7 @@ import 'inference_session.dart';
 import 'local_text_reader.dart';
 import 'model_manager.dart';
 import 'ocr_engine.dart';
- 
-/// Satu-satunya implementasi OcrEngine untuk PaddleOCR, dipakai sama
-/// persis di Android, iOS, dan Web. Yang beda antar platform cuma
-/// `InferenceSession` (native ONNX Runtime vs JS interop) dan
-/// `ModelManager` (filesystem vs Cache Storage) — keduanya sudah
-/// di-resolve otomatis lewat conditional export saat class ini
-/// diinstansiasi tanpa parameter eksplisit.
+
 class PaddleOcrEngine implements OcrEngine {
   final ModelManager _modelManager;
   final InferenceSession Function() _createSession;
@@ -55,10 +49,6 @@ class PaddleOcrEngine implements OcrEngine {
   }
  
   Future<List<String>> _loadDict(String dictPathOrUrl) async {
-    // Di mobile ini path file lokal, di Web ini URL — package:http
-    // menangani keduanya lewat scheme detection bawaan `Uri`/`File`
-    // di layer ModelManager masing-masing platform. Di sini kita cuma
-    // butuh baca isi teksnya; delegasikan ke helper platform-agnostic.
     return DictLoader.load(dictPathOrUrl);
   }
  
@@ -90,7 +80,6 @@ class PaddleOcrEngine implements OcrEngine {
       );
     }
  
-    // 1. Deteksi lokasi teks
     final (detInput, resizeRatio) = DetectionPreprocessor.process(image);
     final detOutput = await _detSession!.run(detInput);
     final boxes = DetectionPostprocessor.process(detOutput, resizeRatio);
@@ -106,7 +95,6 @@ class PaddleOcrEngine implements OcrEngine {
       );
     }
  
-    // 2. Rekognisi teks di tiap box, urut dari atas ke bawah (urutan baca wajar)
     final sortedBoxes = [...boxes]..sort((a, b) => a.y.compareTo(b.y));
  
     final lines = <String>[];
@@ -166,26 +154,19 @@ class PaddleOcrEngine implements OcrEngine {
   }
 }
  
-/// Baca isi dictionary. Di mobile `dictPathOrUrl` adalah path filesystem
-/// lokal (hasil ModelManager mobile), di Web adalah URL yang sudah
-/// ter-cache di Cache Storage (hasil ModelManager web) — `package:http`
-/// `get()` bisa dipakai untuk keduanya selama path mobile juga dibaca
-/// lewat `file://` URI, jadi tidak perlu conditional export terpisah
-/// hanya untuk baca satu file teks kecil ini.
 class DictLoader {
   static Future<List<String>> load(String pathOrUrl) async {
     final content = pathOrUrl.startsWith('http')
         ? await _fetchViaHttp(pathOrUrl)
         : await _readLocalFile(pathOrUrl);
-    // Dikonfirmasi lewat testing nyata: baris kosong di dict.txt BUKAN
-    // representasi karakter spasi (percobaan sebaliknya menghasilkan
-    // pergeseran index sistematis pada semua karakter — lihat histori
-    // debugging). Filter semua baris kosong ini yang justru benar.
     return content.split('\n').where((l) => l.trim().isNotEmpty).toList();
   }
  
   static Future<String> _fetchViaHttp(String url) async {
-    final response = await http.get(Uri.parse(url));
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {'ngrok-skip-browser-warning': 'true'},
+    );
     if (response.statusCode != 200) {
       throw Exception('Gagal fetch dictionary dari $url (HTTP ${response.statusCode})');
     }
