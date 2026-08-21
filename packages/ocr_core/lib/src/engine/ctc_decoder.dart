@@ -8,20 +8,6 @@ class RecognizedLine {
   const RecognizedLine({required this.text, required this.confidence});
 }
  
-/// CTC (Connectionist Temporal Classification) greedy decode — ambil
-/// karakter dengan probabilitas tertinggi tiap time step, hilangkan
-/// duplikat berturut-turut dan blank token, lalu map index ke karakter
-/// lewat dictionary.
-///
-/// CATATAN: sempat dicoba heuristik sisip-spasi dari panjang blank run
-/// di antara karakter (lihat histori debugging), tapi hasilnya net
-/// negatif — gap blank run di model ini ternyata tidak berkorelasi
-/// dengan batas kata, malah memotong kata yang sudah benar jadi
-/// terpisah acak. Dictionary/model "tiny" ini sepertinya memang tidak
-/// pernah dilatih untuk merepresentasikan spasi dalam satu baris teks.
-/// Spasi antar kata untuk field terstruktur (KTP, dst) sebaiknya
-/// direkonstruksi di layer parsing dokumen (regex per pola field),
-/// bukan dipaksakan di level decode CTC generik ini.
 class CtcDecoder {
   static const _blankIndex = 0; // konvensi PaddleOCR: index 0 = blank/CTC
  

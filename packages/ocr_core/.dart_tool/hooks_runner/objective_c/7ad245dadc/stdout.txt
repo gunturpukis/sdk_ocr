@@ -1,0 +1,51 @@
+Running `(cd /Users/Guntur/.pub-cache/hosted/pub.dev/objective_c-9.5.0/; TMPDIR=/var/folders/zg/gsd3xjy117nc95yt44fw3ls80000gp/T/ PATH=/Users/Guntur/.local/bin:/Users/Guntur/Library/Android/sdk/platform-tools:/Users/Guntur/Library/Application Support/Code/User/globalStorage/github.copilot-chat/debugCommand:/Users/Guntur/Library/Application Support/Code/User/globalStorage/github.copilot-chat/copilotCli:/opt/homebrew/share/flutter/bin/:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/Library/Apple/usr/bin:/opt/homebrew/bin:/opt/homebrew/share/flutter/bin/:/Users/Guntur/Library/Application Support/Code/User/globalStorage/github.copilot-chat/debugCommand:/Users/Guntur/Library/Application Support/Code/User/globalStorage/github.copilot-chat/copilotCli:/Users/Guntur/.local/bin:/Users/Guntur/Library/Android/sdk/platform-tools:/Users/Guntur/.pub-cache/bin:/Users/Guntur/.pub-cache/bin HOME=/Users/Guntur /opt/homebrew/share/flutter/bin/cache/dart-sdk/bin/dart --packages=/Users/Guntur/Guntur/sdk_ocr/packages/ocr_core/.dart_tool/package_config.json /Users/Guntur/Guntur/sdk_ocr/packages/ocr_core/.dart_tool/hooks_runner/objective_c/7ad245dadc/hook.dill --config=/Users/Guntur/Guntur/sdk_ocr/packages/ocr_core/.dart_tool/hooks_runner/objective_c/7ad245dadc/input.json )`.
+INFO: 2026-08-19 14:06:36.035383: Using compiler /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang from BuildInput.cCompiler.cc.
+
+INFO: 2026-08-19 14:06:36.039511: Running: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk -target arm64-apple-darwin -mmacos-version-min=13 -c /Users/Guntur/.pub-cache/hosted/pub.dev/objective_c-9.5.0/src/include/dart_api_dl.c -fpic -gline-tables-only -I src -o /Users/Guntur/Guntur/sdk_ocr/packages/ocr_core/.dart_tool/hooks_runner/shared/objective_c/build/7ad245dadc/obj/src/include/dart_api_dl.c.o
+
+INFO: 2026-08-19 14:06:36.040860: Running: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk -target arm64-apple-darwin -mmacos-version-min=13 -c /Users/Guntur/.pub-cache/hosted/pub.dev/objective_c-9.5.0/src/objective_c.c -fpic -gline-tables-only -I src -o /Users/Guntur/Guntur/sdk_ocr/packages/ocr_core/.dart_tool/hooks_runner/shared/objective_c/build/7ad245dadc/obj/src/objective_c.c.o
+
+INFO: 2026-08-19 14:06:36.041311: Running: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk -target arm64-apple-darwin -mmacos-version-min=13 -x objective-c -fobjc-arc -c /Users/Guntur/.pub-cache/hosted/pub.dev/objective_c-9.5.0/src/objective_c.m -fpic -gline-tables-only -I src -o /Users/Guntur/Guntur/sdk_ocr/packages/ocr_core/.dart_tool/hooks_runner/shared/objective_c/build/7ad245dadc/obj/src/objective_c.m.o
+
+ream_adapter.m.o
+
+INFO: 2026-08-19 14:06:36.041519: Running: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk -target arm64-apple-darwin -mmacos-version-min=13 -x objective-c -fobjc-arc -c /Users/Guntur/.pub-cache/hosted/pub.dev/objective_c-9.5.0/src/observer.m -fpic -gline-tables-only -I src -o /Users/Guntur/Guntur/sdk_ocr/packages/ocr_core/.dart_tool/hooks_runner/shared/objective_c/build/7ad245dadc/obj/src/observer.m.o
+
+INFO: 2026-08-19 14:06:36.041791: Running: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk -target arm64-apple-darwin -mmacos-version-min=13 -x objective-c -fobjc-arc -c /Users/Guntur/.pub-cache/hosted/pub.dev/objective_c-9.5.0/src/ns_number.m -fpic -gline-tables-only -I src -o /Users/Guntur/Guntur/sdk_ocr/packages/ocr_core/.dart_tool/hooks_runner/shared/objective_c/build/7ad245dadc/obj/src/ns_number.m.o
+
+INFO: 2026-08-19 14:06:36.042172: Running: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk -target arm64-apple-darwin -mmacos-version-min=13 -x objective-c -fobjc-arc -c /Users/Guntur/.pub-cache/hosted/pub.dev/objective_c-9.5.0/src/protocol.m -fpic -gline-tables-only -I src -o /Users/Guntur/Guntur/sdk_ocr/packages/ocr_core/.dart_tool/hooks_runner/shared/objective_c/build/7ad245dadc/obj/src/protocol.m.o
+
+INFO: 2026-08-19 14:06:36.042371: Running: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk -target arm64-apple-darwin -mmacos-version-min=13 -x objective-c -fobjc-arc -c /Users/Guntur/.pub-cache/hosted/pub.dev/objective_c-9.5.0/src/objective_c_bindings_generated.m -fpic -gline-tables-only -I src -o /Users/Guntur/Guntur/sdk_ocr/packages/ocr_core/.dart_tool/hooks_runner/shared/objective_c/build/7ad245dadc/obj/src/objective_c_bindings_generated.m.o
+
+INFO: 2026-08-19 14:06:36.301318: Generated /Users/Guntur/Guntur/sdk_ocINFO: 2026-08-19 14:06:36.301570: 
+INFO: 2026-08-19 14:06:36.301667: 
+INFO: 2026-08-19 14:06:36.301681: Generated /Users/Guntur/Guntur/sdk_ocr/packages/ocr_core/.dart_tool/hooks_runner/shared/objective_c/build/7ad245dadc/obj/src/include/dart_api_dl.c.o
+
+INFO: 2026-08-19 14:06:36.306311: 
+INFO: 2026-08-19 14:06:36.306340: 
+INFO: 2026-08-19 14:06:36.306352: Generated /Users/Guntur/Guntur/sdk_ocr/packages/ocr_core/.dart_tool/hooks_runner/shared/objective_c/build/7ad245dadc/obj/src/observer.m.o
+
+INFO: 2026-08-19 14:06:36.308758: 
+INFO: 2026-08-19 14:06:36.308784: 
+INFO: 2026-08-19 14:06:36.308794: Generated /Users/Guntur/Guntur/sdk_ocr/packages/ocr_core/.dart_tool/hooks_runner/shared/objective_c/build/7ad245dadc/obj/src/protocol.m.o
+
+INFO: 2026-08-19 14:06:36.558637: 
+INFO: 2026-08-19 14:06:36.558682: 
+INFO: 2026-08-19 14:06:36.558695: Generated /Users/Guntur/Guntur/sdk_ocr/packages/ocr_core/.dart_tool/hooks_runner/shared/objective_c/build/7ad245dadc/obj/src/ns_number.m.o
+
+INFO: 2026-08-19 14:06:36.569628: 
+INFO: 2026-08-19 14:06:36.569649: Generated /Users/Guntur/Guntur/sdk_ocr/packages/ocr_core/.dart_tool/hooks_runner/shared/objective_c/build/7ad245dadc/obj/src/input_stream_adapter.m.o
+
+/obj/src/objective_c.m.o
+INFO: 2026-08-19 14:06:36.569615: 
+
+INFO: 2026-08-19 14:06:36.600145: 
+INFO: 2026-08-19 14:06:36.600185: 
+INFO: 2026-08-19 14:06:36.600196: Generated /Users/Guntur/Guntur/sdk_ocr/packages/ocr_core/.dart_tool/hooks_runner/shared/objective_c/build/7ad245dadc/obj/src/objective_c_bindings_generated.m.o
+
+INFO: 2026-08-19 14:06:36.600499: Running: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -shared -Wl,-encryptable -undefined dynamic_lookup -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk -target arm64-apple-darwin -mmacos-version-min=13 /Users/Guntur/Guntur/sdk_ocr/packages/ocr_core/.dart_tool/hooks_runner/shared/objective_c/build/7ad245dadc/obj/src/include/dart_api_dl.c.o /Users/Guntur/Guntur/sdk_ocr/packages/ocr_core/.dart_tool/hooks_runner/shared/objective_c/build/7ad245dadc/obj/src/objective_c.c.o /Users/Guntur/Guntur/sdk_ocr/packages/ocr_core/.dart_tool/hooks_runner/shared/objective_c/build/7ad245dadc/obj/src/input_stream_adapter.m.o /Users/Guntur/Guntur/sdk_ocr/packages/ocr_core/.dart_tool/hooks_runner/shared/objective_c/build/7ad245dadc/obj/src/objective_c.m.o /Users/Guntur/Guntur/sdk_ocr/packages/ocr_core/.dart_tool/hooks_runner/shared/objective_c/build/7ad245dadc/obj/src/observer.m.o /Users/Guntur/Guntur/sdk_ocr/packages/ocr_core/.dart_tool/hooks_runner/shared/objective_c/build/7ad245dadc/obj/src/ns_number.m.o /Users/Guntur/Guntur/sdk_ocr/packages/ocr_core/.dart_tool/hooks_runner/shared/objective_c/build/7ad245dadc/obj/src/protocol.m.o /Users/Guntur/Guntur/sdk_ocr/packages/ocr_core/.dart_tool/hooks_runner/shared/objective_c/build/7ad245dadc/obj/src/objective_c_bindings_generated.m.o -o /Users/Guntur/Guntur/sdk_ocr/packages/ocr_core/.dart_tool/hooks_runner/shared/objective_c/build/7ad245dadc/objective_c.dylib
+
+INFO: 2026-08-19 14:06:36.730353: 
+INFO: 2026-08-19 14:06:36.730406: 
+INFO: 2026-08-19 14:06:36.730418: Generated /Users/Guntur/Guntur/sdk_ocr/packages/ocr_core/.dart_tool/hooks_runner/shared/objective_c/build/7ad245dadc/objective_c.dylib
+
