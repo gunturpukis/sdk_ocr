@@ -1,0 +1,26 @@
+name: ocr_web_host
+description: >
+  Entrypoint Flutter Web KHUSUS untuk di-embed sebagai <iframe> di host app
+  (React/Next.js/vanilla web apa pun). Bukan package yang di-import — ini
+  aplikasi mandiri yang di-build (`flutter build web`) lalu hasilnya
+  di-hosting terpisah dan dipanggil lewat <iframe src="...">.
+version: 0.1.0
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+  flutter: '>=3.19.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  web: ^1.1.0
+  ocr_core:
+    path: ../../packages/ocr_core
+  ocr_ui:
+    path: ../../packages/ocr_ui
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  lints: ^4.0.0

@@ -2,13 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../theme/ocr_ui_theme.dart';
 
-/// Overlay kamera dengan frame guide berbentuk corner bracket (seperti
-/// viewfinder kamera rangefinder) + garis scan animasi yang bergerak
-/// naik-turun, dan area di luar frame di-dim supaya user fokus posisikan
-/// dokumen di dalam frame.
 class ScanFrameOverlay extends StatefulWidget {
   final bool isScanning;
-  final double aspectRatio; // rasio frame, misal 1.586 untuk KTP (ISO/IEC 7810 ID-1)
+  final double
+      aspectRatio; // rasio frame, misal 1.586 untuk KTP (ISO/IEC 7810 ID-1)
 
   const ScanFrameOverlay({
     super.key,
@@ -112,14 +109,18 @@ class _ScanFramePainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
 
     final corners = [
-      // top-left
       [frameRect.topLeft, Offset(bracketLength, 0), Offset(0, bracketLength)],
-      // top-right
       [frameRect.topRight, Offset(-bracketLength, 0), Offset(0, bracketLength)],
-      // bottom-left
-      [frameRect.bottomLeft, Offset(bracketLength, 0), Offset(0, -bracketLength)],
-      // bottom-right
-      [frameRect.bottomRight, Offset(-bracketLength, 0), Offset(0, -bracketLength)],
+      [
+        frameRect.bottomLeft,
+        Offset(bracketLength, 0),
+        Offset(0, -bracketLength)
+      ],
+      [
+        frameRect.bottomRight,
+        Offset(-bracketLength, 0),
+        Offset(0, -bracketLength)
+      ],
     ];
 
     for (final corner in corners) {
@@ -158,5 +159,6 @@ class _ScanFramePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _ScanFramePainter oldDelegate) =>
-      oldDelegate.scanProgress != scanProgress || oldDelegate.isScanning != isScanning;
+      oldDelegate.scanProgress != scanProgress ||
+      oldDelegate.isScanning != isScanning;
 }

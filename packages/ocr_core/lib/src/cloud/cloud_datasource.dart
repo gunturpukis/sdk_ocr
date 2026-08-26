@@ -16,7 +16,6 @@ class CloudDataSource {
 
   Future<OcrResult> recognize(Uint8List imageBytes) async {
     try {
-      // 1. Parsing URI dengan aman (memastikan trailing slash disesuaikan)
       final normalizedBase = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
       final uri = Uri.parse('$normalizedBase/v1/ocr/read');
 
@@ -29,7 +28,6 @@ class CloudDataSource {
       final streamedResponse = await request.send().timeout(timeout);
       final response = await http.Response.fromStream(streamedResponse);
 
-      // 2. Evaluasi Response Status Code
       if (response.statusCode != 200) {
         return OcrResult(
           success: false,

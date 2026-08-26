@@ -1,16 +1,8 @@
 import 'package:flutter/material.dart';
 
-/// Token desain ocr_ui — dipisah dari Material theme aplikasi consumer
-/// supaya overlay kamera scan konsisten terlihat sama di app manapun
-/// yang pakai SDK ini, terlepas dari tema masing-masing app.
 class OcrUiTokens {
-  // Overlay kamera pakai charcoal gelap (bukan hitam pekat) supaya masih
-  // ada kedalaman saat preview kamera terlihat di baliknya.
   static const overlayScrim = Color(0xCC15181D);
 
-  // Aksen scan-line: teal terang, mengingatkan pada laser scanner/flatbed
-  // scanner — sengaja bukan warna brand generik (biru Material default
-  // atau hijau sukses standar) supaya punya identitas sendiri.
   static const scanLine = Color(0xFF2DD4BF);
 
   static const bracketIdle = Color(0xFFF5F5F0);

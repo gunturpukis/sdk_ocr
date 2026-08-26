@@ -19,17 +19,6 @@ class DetectedBox {
   });
 }
 
-/// Postprocessing output model deteksi DB (Differentiable Binarization).
-///
-/// CATATAN PENTING: implementasi asli PaddleOCR memakai OpenCV
-/// `findContours` + `minAreaRect` untuk dapat box yang bisa miring
-/// (rotated rect), lalu "unclip" pakai Vatti clipping algorithm via
-/// pyclipper. Versi ini disederhanakan jadi axis-aligned bounding box
-/// (tidak mendukung teks miring) memakai connected-component labeling
-/// manual, karena port pyclipper+minAreaRect ke Dart murni adalah task
-/// tersendiri yang cukup besar. Cukup untuk dokumen yang di-scan relatif
-/// lurus (kasus umum KTP/dokumen dengan guide frame di UI), tapi perlu
-/// ditingkatkan kalau nanti banyak kasus teks miring signifikan.
 class DetectionPostprocessor {
   static const _binaryThreshold = 0.3;
   static const _boxScoreThreshold = 0.5;

@@ -9,23 +9,25 @@ import 'ocr_repository.dart';
 
 enum OcrReadiness { onDeviceReady, cloudOnlyFallback }
 
-/// Public API SDK — satu-satunya class yang perlu di-import consumer app.
-///
-/// ```dart
+
+typedef OcrLogger = void Function(String message, {Object? error, StackTrace? stackTrace});
+
 /// final client = OcrClient(
 ///   apiKey: 'xxx',
 ///   baseUrl: 'https://ocr-api.example.com',
 ///   modelManifestUrl: 'https://cdn.example.com/models/models.json',
 /// );
 /// await client.prepare();
-/// final result = await client.scan(imageBytes);
-/// ```
+/// final ktpResult = await client.scan(imageBytes);                 // hybrid biasa
+/// final nibResult = await client.scan(imageBytes, forceCloud: true); // paksa cloud
 class OcrClient {
   final OcrRepository _repository;
   final Duration backgroundRetryDelay;
+  final OcrLogger? _logger;
 
   OcrReadiness _readiness = OcrReadiness.cloudOnlyFallback;
   bool _backgroundRetryInProgress = false;
+  bool _disposed = false;
 
   OcrClient({
     required String apiKey,
@@ -34,7 +36,9 @@ class OcrClient {
     double confidenceThreshold = 85.0,
     this.backgroundRetryDelay = const Duration(minutes: 5),
     OcrEngine? engineOverride, // untuk testing, inject mock engine
-  }) : _repository = OcrRepository(
+    OcrLogger? logger,
+  })  : _logger = logger,
+        _repository = OcrRepository(
           engineOverride ?? PaddleOcrEngine(modelManifestUrl: modelManifestUrl),
           CloudDataSource(apiKey: apiKey, baseUrl: baseUrl),
           confidenceThreshold: confidenceThreshold,
@@ -42,16 +46,6 @@ class OcrClient {
 
   OcrReadiness get readiness => _readiness;
 
-  /// Siapkan on-device engine (download+load model). Kalau gagal setelah
-  /// semua retry habis, TIDAK throw — otomatis masuk mode cloud-only
-  /// supaya fitur scan tetap bisa dipakai (cuma butuh koneksi internet
-  /// terus selama sesi itu).
-  ///
-  /// CATATAN SEJARAH: versi awal SDK ini skip on-device sepenuhnya di
-  /// Web (waktu itu memang belum ada opsi on-device untuk Web). Setelah
-  /// InferenceSession Web (ONNX Runtime Web via JS interop) dibangun,
-  /// keputusan itu sudah usang — sekarang Web juga mencoba on-device
-  /// dulu sama seperti mobile, baru fallback ke cloud kalau gagal.
   Future<OcrReadiness> prepare({
     void Function(double progress)? onProgress,
     void Function(int attempt, int maxAttempts)? onRetry,
@@ -62,42 +56,47 @@ class OcrClient {
         onRetry: onRetry,
       );
       _readiness = OcrReadiness.onDeviceReady;
-    } catch (_) {
+    } catch (e, stack) {
+      _logger?.call('OcrClient.prepare() gagal, fallback ke cloud-only', error: e, stackTrace: stack);
       _readiness = OcrReadiness.cloudOnlyFallback;
       _scheduleBackgroundRetry();
     }
     return _readiness;
   }
 
-  /// [forceCloud] — pakai ini kalau consumer app SUDAH TAHU dokumen yang
-  /// akan di-scan butuh model lebih besar/akurat daripada yang di-device
-  /// (misal: NIB, dokumen dengan layout kompleks) — skip on-device sama
-  /// sekali, langsung ke Cloud OCR API tanpa nunggu confidence rendah
-  /// dulu. Kalau tidak di-set, behavior default tetap hybrid seperti
-  /// biasa (coba on-device dulu, fallback ke cloud kalau confidence
-  /// rendah atau on-device belum siap).
-  Future<OcrResult> scan(Uint8List imageBytes, {bool forceCloud = false}) =>
-      _repository.recognize(
-        imageBytes,
-        forceCloudOnly: forceCloud || _readiness == OcrReadiness.cloudOnlyFallback,
-      );
+  Future<OcrResult> scan(Uint8List imageBytes, {bool forceCloud = false}) {
+    if (_disposed) {
+      throw StateError('OcrClient sudah di-dispose(). Buat instance baru untuk scan lagi.');
+    }
+    return _repository.recognize(
+      imageBytes,
+      forceCloudOnly: forceCloud || _readiness == OcrReadiness.cloudOnlyFallback,
+    );
+  }
 
   void _scheduleBackgroundRetry() {
-    if (_backgroundRetryInProgress) return;
+    if (_backgroundRetryInProgress || _disposed) return;
     _backgroundRetryInProgress = true;
 
     Future.delayed(backgroundRetryDelay, () async {
+      if (_disposed) {
+        _backgroundRetryInProgress = false;
+        return;
+      }
       try {
         await _repository.initializeOnDevice();
         _readiness = OcrReadiness.onDeviceReady;
-      } catch (_) {
-        // masih gagal — akan dicoba lagi lain kali prepare() dipanggil,
-        // atau lewat retry background berikutnya kalau ingin di-loop
+      } catch (e, stack) {
+        _logger?.call('Background retry initializeOnDevice() masih gagal', error: e, stackTrace: stack);
+        // akan dicoba lagi lain kali prepare() dipanggil manual
       } finally {
         _backgroundRetryInProgress = false;
       }
     });
   }
 
-  Future<void> dispose() => _repository.dispose();
+  Future<void> dispose() async {
+    _disposed = true;
+    await _repository.dispose();
+  }
 }

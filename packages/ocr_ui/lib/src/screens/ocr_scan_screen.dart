@@ -74,7 +74,7 @@ class _OcrScanScreenState extends State<OcrScanScreen> {
       final file = await controller.takePicture();
       final bytes = await file.readAsBytes();
 
-      final result = await widget.client.scan(bytes);
+      final result = await widget.client.scan(bytes, forceCloud: true);
 
       setState(() {
         _lastResult = result;

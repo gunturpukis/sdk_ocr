@@ -9,6 +9,12 @@
 # Node.js
 **/node_modules/
 services/**/.env
+
+# Model binaries — di-download on-demand oleh ensureLocalFile() saat
+# server start (lihat services/ocr-cloud-api/src/ocr-service.mjs),
+# JANGAN commit ke git — cukup berat (~130MB+) dan bakal terus
+# nyangkut di riwayat repo kalau ikut ter-commit.
+services/**/models-cache/
  
 # IDE
 .vscode/

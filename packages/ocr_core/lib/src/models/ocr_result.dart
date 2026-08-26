@@ -99,10 +99,6 @@ class OcrResult {
     );
   }
 
-  /// Serialize ke JSON — dipakai untuk logging, persist hasil scan, atau
-  /// dikirim lintas boundary (mis. postMessage dari Flutter Web ke host
-  /// React/Next.js). Bentuknya sengaja disamakan dengan `fromJson` supaya
-  /// round-trip aman.
   Map<String, dynamic> toJson() => {
         'success': success,
         'data': {

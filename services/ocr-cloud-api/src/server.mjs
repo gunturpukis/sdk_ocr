@@ -1,10 +1,25 @@
 import "dotenv/config";
 import express from "express";
 import multer from "multer";
+import cors from "cors";
 import { authMiddleware } from "./auth-middleware.mjs";
 import { getOcrService, toUnifiedResponse, bufferToCanvas } from "./ocr-service.mjs";
 
 const app = express();
+
+// Browser (beda dari curl/mobile app) wajib lolos CORS preflight dulu
+// sebelum POST bisa jalan — terutama karena kita pakai header custom
+// (Authorization). Origin di bawah HARUS disesuaikan dengan port lokal
+// `flutter run -d chrome` kamu (cek terminal setelah dijalankan) dan
+// domain hosting `apps/web_host` nanti kalau sudah production.
+app.use(
+  cors({
+    origin: [/^http:\/\/localhost:\d+$/, "https://scan.yourapp.com"],
+    methods: ["POST"],
+    allowedHeaders: ["Authorization", "Content-Type"],
+  }),
+);
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB — cukup longgar untuk foto dokumen, cegah abuse
