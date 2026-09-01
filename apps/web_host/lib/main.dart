@@ -6,7 +6,6 @@ import 'package:ocr_core/ocr_core.dart';
 import 'package:ocr_ui/ocr_ui.dart';
 import 'package:web/web.dart' as web;
 
-
 // CATATAN VALIDASI (baca sebelum deploy):
 // File ini ditulis tanpa akses compiler Flutter Web di sandbox saya, sama
 // seperti disclaimer di README utama repo ini. Bagian yang PALING perlu
@@ -200,4 +199,3 @@ class _OcrWebHostAppState extends State<OcrWebHostApp> {
     );
   }
 }
-
