@@ -1,6 +1,8 @@
 "use client"; // WAJIB — hook ini butuh window/DOM, tidak bisa di-render di server
 
-import { useOcrScanner } from "@yourorg/ocr-scanner-react"; // nama publish npm package Anda
+// TODO: Replace with the actual published package name.
+// @ts-expect-error The placeholder package is not installed in this example.
+import { useOcrScanner } from "@yourorg/ocr-scanner-react";
 
 export function ScanKtpButton() {
   const { status, progress, result, error, open } = useOcrScanner({

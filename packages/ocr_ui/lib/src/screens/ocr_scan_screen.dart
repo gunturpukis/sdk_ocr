@@ -1,5 +1,8 @@
+import 'dart:typed_data';
+
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:ocr_core/ocr_core.dart';
 
 import '../theme/ocr_ui_theme.dart';
@@ -38,6 +41,26 @@ class _OcrScanScreenState extends State<OcrScanScreen> {
     _setupCamera();
   }
 
+  Future<void> _pickFromGallery() async {
+    if (_isProcessing) return;
+    try {
+      final picker = ImagePicker();
+      final file = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 100,
+      );
+      if (file == null) return;
+      final bytes = await file.readAsBytes();
+      await _runScan(bytes);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isProcessing = false;
+        _statusMessage = 'Gagal memilih gambar: $e';
+      });
+    }
+  }
+
   Future<void> _setupCamera() async {
     try {
       final cameras = await availableCameras();
@@ -63,27 +86,47 @@ class _OcrScanScreenState extends State<OcrScanScreen> {
 
   Future<void> _capture() async {
     final controller = _cameraController;
-    if (controller == null || !controller.value.isInitialized || _isProcessing) return;
-
-    setState(() {
-      _isProcessing = true;
-      _statusMessage = 'Membaca dokumen...';
-    });
-
+    if (controller == null ||
+        !controller.value.isInitialized ||
+        _isProcessing) {
+      return;
+    }
     try {
       final file = await controller.takePicture();
       final bytes = await file.readAsBytes();
+      await _runScan(bytes);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isProcessing = false;
+        _statusMessage = 'Gagal mengambil foto: $e';
+      });
+    }
+  }
 
-      final result = await widget.client.scan(bytes, forceCloud: true);
-
+  Future<void> _runScan(Uint8List bytes) async {
+    if (_isProcessing) return;
+    setState(() {
+      _isProcessing = true;
+      _statusMessage = 'Membaca dokumen...';
+      _lastResult = null;
+    });
+    try {
+      final result = await widget.client.scan(
+        bytes,
+        forceCloud: false,
+      );
+      if (!mounted) return;
       setState(() {
         _lastResult = result;
         _isProcessing = false;
-        _statusMessage = result.success ? null : (result.error?.detail ?? 'Gagal membaca teks');
+        _statusMessage = result.success
+            ? null
+            : (result.error?.detail ?? 'Gagal membaca teks');
       });
-
       widget.onResult(result);
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isProcessing = false;
         _statusMessage = 'Terjadi kesalahan: $e';
@@ -100,7 +143,6 @@ class _OcrScanScreenState extends State<OcrScanScreen> {
   @override
   Widget build(BuildContext context) {
     final controller = _cameraController;
-
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -109,13 +151,12 @@ class _OcrScanScreenState extends State<OcrScanScreen> {
           if (controller != null && controller.value.isInitialized)
             CameraPreview(controller)
           else
-            const Center(child: CircularProgressIndicator(color: OcrUiTokens.scanLine)),
-
+            const Center(
+                child: CircularProgressIndicator(color: OcrUiTokens.scanLine)),
           ScanFrameOverlay(
             isScanning: _isProcessing,
             aspectRatio: widget.frameAspectRatio,
           ),
-
           Positioned(
             top: MediaQuery.of(context).padding.top + 16,
             left: 16,
@@ -128,11 +169,11 @@ class _OcrScanScreenState extends State<OcrScanScreen> {
                   onPressed: () => Navigator.of(context).maybePop(),
                 ),
                 if (widget.client.readiness == OcrReadiness.cloudOnlyFallback)
-                  const _ModeBadge(label: 'Mode online', icon: Icons.cloud_outlined),
+                  const _ModeBadge(
+                      label: 'Mode online', icon: Icons.cloud_outlined),
               ],
             ),
           ),
-
           Positioned(
             bottom: 48,
             left: 24,
@@ -155,12 +196,83 @@ class _OcrScanScreenState extends State<OcrScanScreen> {
                   ),
                   const SizedBox(height: 16),
                 ],
-                _CaptureButton(isProcessing: _isProcessing, onTap: _capture),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    _GalleryButton(
+                      isProcessing: _isProcessing,
+                      onTap: _pickFromGallery,
+                    ),
+                    const SizedBox(width: 32),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _CaptureButton(
+                          isProcessing: _isProcessing,
+                          onTap: _capture,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Ambil Foto',
+                          style: OcrUiTokens.statusCaption,
+                        ),
+                      ],
+                    ),
+                  ],
+                )
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _GalleryButton extends StatelessWidget {
+  final bool isProcessing;
+  final VoidCallback onTap;
+  const _GalleryButton({
+    required this.isProcessing,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        GestureDetector(
+          onTap: isProcessing ? null : onTap,
+          child: Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: OcrUiTokens.overlayScrim,
+              border: Border.all(
+                color: isProcessing
+                    ? OcrUiTokens.statusTextMuted
+                    : OcrUiTokens.statusText,
+                width: 1.5,
+              ),
+            ),
+            child: Icon(
+              Icons.photo_library_outlined,
+              size: 24,
+              color: isProcessing
+                  ? OcrUiTokens.statusTextMuted
+                  : OcrUiTokens.statusText,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Galeri',
+          style: OcrUiTokens.statusCaption,
+        ),
+      ],
     );
   }
 }
@@ -212,12 +324,15 @@ class _CaptureButton extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: isProcessing ? OcrUiTokens.statusTextMuted : OcrUiTokens.statusText,
+            color: isProcessing
+                ? OcrUiTokens.statusTextMuted
+                : OcrUiTokens.statusText,
           ),
           child: isProcessing
               ? const Padding(
                   padding: EdgeInsets.all(20),
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.black),
                 )
               : null,
         ),
