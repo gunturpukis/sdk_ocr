@@ -34,6 +34,7 @@ class _OcrScanScreenState extends State<OcrScanScreen> {
   bool _isProcessing = false;
   String? _statusMessage;
   OcrResult? _lastResult;
+  final List<String> _logs = [];
 
   @override
   void initState() {
@@ -104,6 +105,11 @@ class _OcrScanScreenState extends State<OcrScanScreen> {
     }
   }
 
+    void _log(String message) {
+    debugPrint(message);
+    setState(() => _logs.insert(0, '${DateTime.now().toIso8601String().substring(11, 19)}  $message'));
+  }
+
   Future<void> _runScan(Uint8List bytes) async {
     if (_isProcessing) return;
     setState(() {
@@ -124,7 +130,9 @@ class _OcrScanScreenState extends State<OcrScanScreen> {
             ? null
             : (result.error?.detail ?? 'Gagal membaca teks');
       });
+      _log('  rawText:\n${result.rawText}');
       widget.onResult(result);
+
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -200,11 +208,11 @@ class _OcrScanScreenState extends State<OcrScanScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    _GalleryButton(
-                      isProcessing: _isProcessing,
-                      onTap: _pickFromGallery,
-                    ),
-                    const SizedBox(width: 32),
+                    // _GalleryButton(
+                    //   isProcessing: _isProcessing,
+                    //   onTap: _pickFromGallery,
+                    // ),
+                    // const SizedBox(width: 32),
                     Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [

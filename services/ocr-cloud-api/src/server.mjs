@@ -9,12 +9,32 @@ const app = express();
 
 // Browser (beda dari curl/mobile app) wajib lolos CORS preflight dulu
 // sebelum POST bisa jalan — terutama karena kita pakai header custom
-// (Authorization). Origin di bawah HARUS disesuaikan dengan port lokal
-// `flutter run -d chrome` kamu (cek terminal setelah dijalankan) dan
-// domain hosting `apps/web_host` nanti kalau sudah production.
+// (Authorization).
+//
+// PENTING: request ke endpoint ini datang dari DOKUMEN iframe (domain
+// tempat `apps/web_host` di-hosting), BUKAN dari halaman React/Next.js
+// yang meng-embed-nya. Jadi origin yang di-whitelist di sini adalah
+// domain hosting Flutter web host itu.
+//
+// Konfigurasi via env CORS_ALLOWED_ORIGINS (comma-separated, origin exact
+// tanpa trailing slash), contoh:
+//   CORS_ALLOWED_ORIGINS=https://scan.yourapp.com,https://host.yourapp.com
+// Origin http://localhost:<port> / http://127.0.0.1:<port> otomatis
+// diizinkan untuk dev (kecuali NODE_ENV=production).
+const envOrigins = (process.env.CORS_ALLOWED_ORIGINS ?? "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+const allowLocalhost = process.env.NODE_ENV !== "production";
+
 app.use(
   cors({
-    origin: [/^http:\/\/localhost:\d+$/, "https://scan.yourapp.com"],
+    origin: [
+      ...(allowLocalhost
+        ? [/^http:\/\/localhost:\d+$/, /^http:\/\/127\.0\.0\.1:\d+$/]
+        : []),
+      ...envOrigins,
+    ],
     methods: ["POST"],
     allowedHeaders: ["Authorization", "Content-Type"],
   }),

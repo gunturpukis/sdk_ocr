@@ -9,6 +9,7 @@
       "dependencies": [
         "camera",
         "flutter",
+        "image",
         "image_picker",
         "ocr_core"
       ],
@@ -77,6 +78,14 @@
         "image_picker_macos",
         "image_picker_platform_interface",
         "image_picker_windows"
+      ]
+    },
+    {
+      "name": "image",
+      "version": "4.9.1",
+      "dependencies": [
+        "archive",
+        "xml"
       ]
     },
     {
@@ -192,14 +201,6 @@
       ]
     },
     {
-      "name": "image",
-      "version": "4.9.1",
-      "dependencies": [
-        "archive",
-        "xml"
-      ]
-    },
-    {
       "name": "path_provider",
       "version": "2.1.6",
       "dependencies": [
@@ -312,6 +313,23 @@
         "flutter_plugin_android_lifecycle",
         "image_picker_platform_interface",
         "meta"
+      ]
+    },
+    {
+      "name": "xml",
+      "version": "7.0.1",
+      "dependencies": [
+        "collection",
+        "meta",
+        "petitparser"
+      ]
+    },
+    {
+      "name": "archive",
+      "version": "4.0.9",
+      "dependencies": [
+        "path",
+        "posix"
       ]
     },
     {
@@ -434,23 +452,6 @@
       ]
     },
     {
-      "name": "xml",
-      "version": "7.0.1",
-      "dependencies": [
-        "collection",
-        "meta",
-        "petitparser"
-      ]
-    },
-    {
-      "name": "archive",
-      "version": "4.0.9",
-      "dependencies": [
-        "path",
-        "posix"
-      ]
-    },
-    {
       "name": "path_provider_windows",
       "version": "2.3.0",
       "dependencies": [
@@ -568,16 +569,6 @@
       "dependencies": []
     },
     {
-      "name": "stream_transform",
-      "version": "2.1.1",
-      "dependencies": []
-    },
-    {
-      "name": "vm_service",
-      "version": "15.2.0",
-      "dependencies": []
-    },
-    {
       "name": "petitparser",
       "version": "7.0.2",
       "dependencies": [
@@ -593,6 +584,16 @@
         "meta",
         "path"
       ]
+    },
+    {
+      "name": "stream_transform",
+      "version": "2.1.1",
+      "dependencies": []
+    },
+    {
+      "name": "vm_service",
+      "version": "15.2.0",
+      "dependencies": []
     },
     {
       "name": "ffi",
