@@ -125,6 +125,38 @@ class RecognitionPreprocessor {
     return strips.isEmpty ? [crop] : strips;
   }
 
+  /// Gabungkan beberapa TensorInput [1,3,48,320] menjadi satu tensor batch
+  /// [K,3,48,320] (data di-concat, batch dim dipromosikan) — untuk satu
+  /// panggilan session.run() yang memproses K strip sekaligus.
+  static TensorInput concatBatch(List<TensorInput> inputs) {
+    if (inputs.isEmpty) {
+      throw ArgumentError('concatBatch butuh >= 1 input');
+    }
+    if (inputs.length == 1) return inputs.single;
+
+    final first = inputs.first;
+    final perImage = first.data.length;
+    for (var i = 1; i < inputs.length; i++) {
+      if (inputs[i].data.length != perImage || !_sameShape(inputs[i].shape, first.shape)) {
+        throw ArgumentError('Semua input harus sama shape & panjang data untuk concatBatch');
+      }
+    }
+    final k = inputs.length;
+    final batchData = Float32List(k * perImage);
+    for (var b = 0; b < k; b++) {
+      batchData.setRange(b * perImage, (b + 1) * perImage, inputs[b].data);
+    }
+    return TensorInput(data: batchData, shape: [k, ...first.shape.skip(1)]);
+  }
+
+  static bool _sameShape(List<int> a, List<int> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
   static TensorInput process(img.Image crop) {
     final ratio = _targetHeight / crop.height;
     var targetW = (crop.width * ratio).round().clamp(1, _maxWidth);

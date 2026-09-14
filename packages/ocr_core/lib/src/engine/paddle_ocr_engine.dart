@@ -16,6 +16,7 @@ import 'ocr_engine.dart';
 class PaddleOcrEngine implements OcrEngine {
   final ModelManager _modelManager;
   final InferenceSession Function() _createSession;
+  final void Function(String message)? logger;
  
   InferenceSession? _detSession;
   InferenceSession? _recSession;
@@ -26,6 +27,7 @@ class PaddleOcrEngine implements OcrEngine {
     required String modelManifestUrl,
     ModelManager? modelManager,
     InferenceSession Function()? sessionFactory,
+    this.logger,
   })  : _modelManager = modelManager ?? ModelManagerImpl(manifestUrl: modelManifestUrl),
         _createSession = sessionFactory ?? InferenceSessionImpl.new;
  
@@ -98,13 +100,12 @@ class PaddleOcrEngine implements OcrEngine {
         error: const OcrError(code: 'NO_TEXT_DETECTED', detail: 'Tidak ada teks terdeteksi'),
         processingTimeMs: stopwatch.elapsedMilliseconds,
       );
-    }
+    }    final sortedBoxes = [...boxes]..sort((a, b) => a.y.compareTo(b.y));
  
-    final sortedBoxes = [...boxes]..sort((a, b) => a.y.compareTo(b.y));
- 
-    final lines = <String>[];
-    final confidences = <double>[];
- 
+    // Fase 1: preprocess semua box jadi strip tensor (tanpa squash).
+    // Catat strip per box supaya hasil decode bisa direkonstruksi urut.
+    final stripsPerBox = <List<TensorInput>>[];
+    final allStrips = <TensorInput>[];
     for (final box in sortedBoxes) {
       final crop = img.copyCrop(
         image,
@@ -112,16 +113,63 @@ class PaddleOcrEngine implements OcrEngine {
         y: box.y,
         width: box.width.clamp(1, image.width - box.x),
         height: box.height.clamp(1, image.height - box.y),
-      );      // Crop lebar (baris panjang hasil mergeSameLine) dipecah jadi
-      // beberapa strip TANPA squash — tiap strip direkognisi sendiri dan
-      // outputnya berurutan jadi beberapa baris.
-      final recInputs = RecognitionPreprocessor.processMulti(crop);
-      for (final recInput in recInputs) {
-        final recOutput = await _recSession!.run(recInput);
-        final recognized = CtcDecoder.decode(recOutput, _dict);
-
-        if (recognized.text.trim().isEmpty) continue;
-
+      );
+ 
+      final stripInputs = RecognitionPreprocessor.processMulti(crop);
+      stripsPerBox.add(stripInputs);
+      allStrips.addAll(stripInputs);
+    }
+ 
+    // Fase 2: inference BATCH — K strip diproses dalam SATU panggilan
+    // session.run() (input [K,3,48,320]). Semua strip sudah dipad ke
+    // 48x320, jadi aman di-stack. Ini memangkas overhead per-call ort-web
+    // (setup feeds, transfer tensor, await JS) yang dominan untuk strip
+    // pendek, dan memanfaatkan batched matmul di sisi runtime.
+    // Batch dibatasi 8 supaya alokasi tensor tetap wajar.
+    // Kalau model tidak mendukung dynamic batch (runtime error), jatuh
+    // otomatis ke per-strip seperti semula — fallback aman, hasil sama.
+    const recBatchSize = 8;
+    final stripResults = List<RecognizedLine?>.filled(allStrips.length, null);
+    var batchedCalls = 0;
+    var fallbackStrips = 0;
+    for (var start = 0; start < allStrips.length; start += recBatchSize) {
+      final end = (start + recBatchSize) > allStrips.length
+          ? allStrips.length
+          : start + recBatchSize;
+      final chunk = allStrips.sublist(start, end);
+      try {
+        if (chunk.length == 1) {
+          stripResults[start] = CtcDecoder.decode(await _recSession!.run(chunk.single), _dict);
+          continue;
+        }
+        final batchOutput = await _recSession!.run(RecognitionPreprocessor.concatBatch(chunk));
+        final decoded = CtcDecoder.decodeBatch(batchOutput, chunk.length, _dict);
+        for (var i = 0; i < decoded.length; i++) {
+          stripResults[start + i] = decoded[i];
+        }
+        batchedCalls++;
+      } catch (_) {
+        // Fallback per-strip (model tanpa dukungan dynamic batch).
+        fallbackStrips += chunk.length;
+        for (var i = 0; i < chunk.length; i++) {
+          stripResults[start + i] = CtcDecoder.decode(await _recSession!.run(chunk[i]), _dict);
+        }
+      }
+    }
+    logger?.call(
+      'rec batch: ${allStrips.length} strip → $batchedCalls panggilan batch '
+      '(fallback per-strip: $fallbackStrips)',
+    );
+ 
+    // Fase 3: rekonstruksi baris teks dari hasil strip, urut per box.
+    final lines = <String>[];
+    final confidences = <double>[];
+    var stripCursor = 0;
+    for (final strips in stripsPerBox) {
+      for (var s = 0; s < strips.length; s++) {
+        final recognized = stripResults[stripCursor++];
+        if (recognized == null || recognized.text.trim().isEmpty) continue;
+ 
         lines.add(recognized.text);
         confidences.add(recognized.confidence);
       }

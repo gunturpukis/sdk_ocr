@@ -40,7 +40,7 @@ class OcrClient {
     CloudFirstPolicy cloudFirstPolicy = const CloudFirstPolicy(),
   })  : _logger = logger,
         _repository = OcrRepository(
-          engineOverride ?? PaddleOcrEngine(modelManifestUrl: modelManifestUrl),
+          engineOverride ?? PaddleOcrEngine(modelManifestUrl: modelManifestUrl, logger: logger),
           CloudDataSource(apiKey: apiKey, baseUrl: baseUrl),
           confidenceThreshold: confidenceThreshold,
           cloudFirstPolicy: cloudFirstPolicy,
