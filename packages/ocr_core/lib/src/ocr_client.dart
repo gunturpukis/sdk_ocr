@@ -37,11 +37,14 @@ class OcrClient {
     this.backgroundRetryDelay = const Duration(minutes: 5),
     OcrEngine? engineOverride, // untuk testing, inject mock engine
     OcrLogger? logger,
+    CloudFirstPolicy cloudFirstPolicy = const CloudFirstPolicy(),
   })  : _logger = logger,
         _repository = OcrRepository(
           engineOverride ?? PaddleOcrEngine(modelManifestUrl: modelManifestUrl),
           CloudDataSource(apiKey: apiKey, baseUrl: baseUrl),
           confidenceThreshold: confidenceThreshold,
+          cloudFirstPolicy: cloudFirstPolicy,
+          logger: logger,
         );
 
   OcrReadiness get readiness => _readiness;

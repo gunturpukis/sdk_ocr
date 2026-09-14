@@ -4,6 +4,7 @@ import 'package:image/image.dart' as img;
 
 import 'inference_session.dart';
 
+
 /// Preprocessing gambar untuk model deteksi teks PaddleOCR (algoritma DB).
 /// Model DB butuh input dengan dimensi kelipatan 32, dinormalisasi dengan
 /// mean/std standar ImageNet (dipakai PaddleOCR untuk training).
@@ -57,9 +58,72 @@ class DetectionPreprocessor {
 /// Preprocessing crop hasil deteksi untuk model rekognisi teks. Model rec
 /// PaddleOCR butuh tinggi tetap (biasanya 48px), lebar mengikuti aspect
 /// ratio (dengan batas maksimum + padding).
+///
+/// PENTING soal crop lebar: me-resize crop yang aspect-nya lebih lebar
+/// dari 320:48 (~6.7:1) langsung ke lebar <=320 MENGHANCURKAN hurufnya
+/// (squash horizontal). Baris panjang hasil mergeSameLine (dan baris
+/// terdeteksi yang memang panjang) justru paling sering kena kasus ini.
+/// Solusinya: crop lebar dipecah menjadi beberapa strip yang masing-masing
+/// masih dalam batas aspect, dipotong di kolom paling "kosong" (ink
+/// minimum) supaya tidak memotong huruf, lalu TIAP strip direkognisi
+/// sendiri-sendiri dan hasilnya berurutan jadi beberapa baris output.
 class RecognitionPreprocessor {
   static const _targetHeight = 48;
   static const _maxWidth = 320;
+
+  static List<TensorInput> processMulti(img.Image crop) {
+    // Crop lebar (aspect > batas model) dipecah jadi strip tanpa squash.
+    final maxAspect = _maxWidth / _targetHeight;
+    if (crop.width > crop.height * maxAspect) {
+      return [for (final strip in _splitWide(crop)) process(strip)];
+    }
+    return [process(crop)];
+  }
+
+  /// Pecah crop lebar menjadi strip yang masing-masing aspect-nya masih
+  /// dalam batas model. Titik potong dipilih di kolom dengan ink minimum
+  /// di sekitar posisi pembagian sama, supaya huruf tidak terbelah.
+  static List<img.Image> _splitWide(img.Image crop) {
+    final maxStripW = (_maxWidth * crop.height / _targetHeight).floor().clamp(16, crop.width);
+    final n = (crop.width / maxStripW).ceil();
+    if (n <= 1) return [crop];
+
+    // Proyeksi ink vertikal (total kegelapan per kolom).
+    final ink = Float32List(crop.width);
+    for (var x = 0; x < crop.width; x++) {
+      var sum = 0.0;
+      for (var y = 0; y < crop.height; y++) {
+        sum += 255.0 - crop.getPixel(x, y).luminance;
+      }
+      ink[x] = sum;
+    }
+
+    final bounds = <int>[0];
+    final win = (maxStripW * 0.1).floor().clamp(1, crop.width);
+    for (var k = 1; k < n; k++) {
+      final target = (k * crop.width / n).round();
+      var best = target;
+      var bestInk = double.infinity;
+      final from = (target - win).clamp(bounds.last + 1, crop.width - 1);
+      final to = (target + win).clamp(bounds.last + 1, crop.width - 1);
+      for (var c = from; c <= to; c++) {
+        if (ink[c] < bestInk) {
+          bestInk = ink[c];
+          best = c;
+        }
+      }
+      bounds.add(best);
+    }
+    bounds.add(crop.width);
+
+    final strips = <img.Image>[];
+    for (var i = 0; i + 1 < bounds.length; i++) {
+      final w = bounds[i + 1] - bounds[i];
+      if (w < 8) continue; // strip tersisa terlalu kecil untuk dibaca
+      strips.add(img.copyCrop(crop, x: bounds[i], y: 0, width: w, height: crop.height));
+    }
+    return strips.isEmpty ? [crop] : strips;
+  }
 
   static TensorInput process(img.Image crop) {
     final ratio = _targetHeight / crop.height;

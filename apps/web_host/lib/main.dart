@@ -8,6 +8,9 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
+// Test-harness dependency (transitif via ocr_core): fetch gambar benchmark
+// nyata yang diserve oleh models server lokal.
+import 'package:http/http.dart' as http;
 import 'package:ocr_core/ocr_core.dart';
 import 'package:web/web.dart' as web;
  
@@ -85,6 +88,9 @@ class _OcrWebHostAppState extends State<OcrWebHostApp> {
   /// Test hook: counter request scan dari host (OCR_SCAN). _ScanHomeScreen
   /// listen ini dan menjalankan scan gambar sintetis tanpa UI dialog.
   final ValueNotifier<int> _scanRequests = ValueNotifier(0);
+
+  /// Test hook: request benchmark suite (OCR_BENCH) — value = config message.
+  final ValueNotifier<Map<String, dynamic>?> _benchRequest = ValueNotifier(null);
  
   @override
   void initState() {
@@ -100,6 +106,7 @@ class _OcrWebHostAppState extends State<OcrWebHostApp> {
   void dispose() {
     web.window.removeEventListener('message', _handleMessage.toJS);
     _scanRequests.dispose();
+    _benchRequest.dispose();
     _client?.dispose();
     super.dispose();
   }
@@ -136,6 +143,9 @@ class _OcrWebHostAppState extends State<OcrWebHostApp> {
         // TEST HOOK: trigger scan gambar sintetis tanpa dialog kamera/file,
         // supaya pipeline tensor bisa di-automasi dari luar (harness).
         _handleScanRequest();
+      case 'OCR_BENCH':
+        // TEST HOOK: jalankan benchmark suite latency & confidence.
+        _handleBenchRequest(data);
     }
   }
 
@@ -151,6 +161,19 @@ class _OcrWebHostAppState extends State<OcrWebHostApp> {
       return;
     }
     _scanRequests.value++;
+  }
+
+  /// Test hook: mulai benchmark suite (OCR_BENCH). Config dibawa lewat
+  /// notifier supaya _ScanHomeScreen bisa membacanya saat listener aktif.
+  void _handleBenchRequest(Map<String, dynamic> data) {
+    if (_client == null) {
+      _postToHost({
+        'type': 'OCR_ERROR',
+        'message': 'OCR_BENCH ditolak: kirim OCR_INIT dulu dan tunggu OCR_READY',
+      });
+      return;
+    }
+    _benchRequest.value = Map<String, dynamic>.from(data);
   }
  
   Future<void> _handleOcrInit(Map<String, dynamic> data) async {
@@ -249,7 +272,9 @@ class _OcrWebHostAppState extends State<OcrWebHostApp> {
                   client: client,
                   forceCloud: _forceCloud,
                   scanRequests: _scanRequests,
+                  benchRequest: _benchRequest,
                   onResult: (result) => _postToHost({'type': 'OCR_RESULT', 'payload': result.toJson()}),
+                  onPost: _postToHost,
                 ),
     );
   }
@@ -267,7 +292,9 @@ class _ScanHomeScreen extends StatefulWidget {
     required this.client,
     required this.forceCloud,
     required this.scanRequests,
+    required this.benchRequest,
     required this.onResult,
+    required this.onPost,
   });
 
   final OcrClient client;
@@ -278,7 +305,14 @@ class _ScanHomeScreen extends StatefulWidget {
 
   /// Test hook: increment = minta satu scan gambar sintetis (tanpa dialog).
   final ValueNotifier<int> scanRequests;
+
+  /// Test hook: value berubah = jalankan benchmark suite (payload = config).
+  final ValueNotifier<Map<String, dynamic>?> benchRequest;
+
   final void Function(OcrResult result) onResult;
+
+  /// Saluran postMessage mentah (dipakai OCR_BENCH untuk log & hasil).
+  final void Function(Map<String, dynamic> message) onPost;
  
   @override
   State<_ScanHomeScreen> createState() => _ScanHomeScreenState();
@@ -286,12 +320,14 @@ class _ScanHomeScreen extends StatefulWidget {
  
 class _ScanHomeScreenState extends State<_ScanHomeScreen> {
   bool _isScanning = false;
+  bool _isBenching = false;
   String? _statusMessage;
 
   @override
   void initState() {
     super.initState();
     widget.scanRequests.addListener(_onExternalScanRequest);
+    widget.benchRequest.addListener(_onExternalBenchRequest);
   }
 
   @override
@@ -301,12 +337,161 @@ class _ScanHomeScreenState extends State<_ScanHomeScreen> {
       oldWidget.scanRequests.removeListener(_onExternalScanRequest);
       widget.scanRequests.addListener(_onExternalScanRequest);
     }
+    if (oldWidget.benchRequest != widget.benchRequest) {
+      oldWidget.benchRequest.removeListener(_onExternalBenchRequest);
+      widget.benchRequest.addListener(_onExternalBenchRequest);
+    }
   }
 
   @override
   void dispose() {
     widget.scanRequests.removeListener(_onExternalScanRequest);
+    widget.benchRequest.removeListener(_onExternalBenchRequest);
     super.dispose();
+  }
+
+  void _onExternalBenchRequest() {
+    final cfg = widget.benchRequest.value;
+    if (cfg == null || _isScanning || _isBenching) return;
+    _runBenchSuite(cfg);
+  }
+
+  /// Benchmark suite: latency & confidence per gambar, beberapa repetisi.
+  /// Menggunakan jalur produksi client.scan() penuh (preprocess → det →
+  /// crop → rec → CTC). OcrResult.processingTimeMs mengukur pipeline
+  /// engine saja; wallMs tambah overhead decode+await di atasnya.
+  Future<void> _runBenchSuite(Map<String, dynamic> cfg) async {
+    _isBenching = true;
+    final totalSw = Stopwatch()..start();
+    try {
+      final reps = (cfg['reps'] as num?)?.toInt() ?? 3;
+      final realBase = (cfg['realImageBaseUrl'] as String?) ?? 'http://localhost:9090/bench';
+      final realImages = (cfg['realImages'] as List?)?.cast<String>() ?? const <String>[];
+
+      widget.onPost({'type': 'OCR_LOG', 'message': 'BENCH: mulai (reps=$reps, real=${realImages.length})'});
+
+      final cases = <(String, Uint8List)>[
+        ..._buildSyntheticBenchImages(),
+      ];
+      for (final name in realImages) {
+        try {
+          final resp = await http.get(Uri.parse('$realBase/$name'));
+          if (resp.statusCode != 200) {
+            widget.onPost({'type': 'OCR_LOG', 'message': 'BENCH: fetch $name gagal HTTP ${resp.statusCode}'});
+            continue;
+          }
+          cases.add(('real_$name', resp.bodyBytes));
+        } catch (e) {
+          widget.onPost({'type': 'OCR_LOG', 'message': 'BENCH: fetch $name error: $e'});
+        }
+      }
+
+      final records = <Map<String, dynamic>>[];
+      var globalFirst = true;
+      for (final caseEntry in cases) {
+        for (var rep = 1; rep <= reps; rep++) {
+          final sw = Stopwatch()..start();
+          OcrResult result;
+          try {
+            result = await widget.client.scan(caseEntry.$2);
+          } catch (e) {
+            result = OcrResult(
+              success: false,
+              source: OcrSource.onDevice,
+              confidence: 0,
+              rawText: '',
+              error: OcrError(code: 'SCAN_THROW', detail: e.toString()),
+            );
+          }
+          sw.stop();
+          records.add({
+            'case': caseEntry.$1,
+            'rep': rep,
+            'warmup': globalFirst,
+            'ok': result.success,
+            'source': result.source == OcrSource.cloud ? 'cloud' : 'onDevice',
+            'confidence': result.confidence,
+            'engineMs': result.processingTimeMs,
+            'wallMs': sw.elapsedMilliseconds,
+            'imageBytes': caseEntry.$2.length,
+            'charCount': result.rawText.length,
+            'errorCode': result.error?.code,
+            'text': result.rawText.length > 120 ? result.rawText.substring(0, 120) : result.rawText,
+          });
+          globalFirst = false;
+          widget.onPost({
+            'type': 'OCR_LOG',
+            'message': 'BENCH: ${caseEntry.$1} #$rep → ok=${result.success} '
+                'src=${result.source.name} conf=${result.confidence.toStringAsFixed(1)} '
+                'wall=${sw.elapsedMilliseconds}ms engine=${result.processingTimeMs}ms',
+          });
+        }
+      }
+
+      widget.onPost({
+        'type': 'OCR_BENCH_DONE',
+        'reps': reps,
+        'totalMs': totalSw.elapsedMilliseconds,
+        'records': records,
+      });
+    } finally {
+      _isBenching = false;
+    }
+  }
+
+  /// Suite gambar sintetis untuk benchmark: spektrum kesulitan dari
+  /// teks besar bersih sampai noise/rotasi/kontras rendah/kosong.
+  List<(String, Uint8List)> _buildSyntheticBenchImages() {
+    Uint8List encode(img.Image image) => Uint8List.fromList(img.encodeJpg(image, quality: 92));
+    final cases = <(String, Uint8List)>[];
+
+    // 1. Teks besar bersih — baseline paling mudah.
+    final c1 = img.Image(width: 640, height: 400);
+    img.fill(c1, color: img.ColorRgb8(255, 255, 255));
+    img.drawString(c1, 'HELLO WORLD 123', font: img.arial48, x: 40, y: 150, color: img.ColorRgb8(0, 0, 0));
+    cases.add(('synth_clean_large', encode(c1)));
+
+    // 2. Teks kecil 14px — simulasi dokumen dipindai dengan teks rapat.
+    final c2 = img.Image(width: 480, height: 320);
+    img.fill(c2, color: img.ColorRgb8(255, 255, 255));
+    img.drawString(c2, 'Invoice No: 2024-0817', font: img.arial14, x: 24, y: 48, color: img.ColorRgb8(0, 0, 0));
+    img.drawString(c2, 'Total: USD 1,250.00', font: img.arial14, x: 24, y: 78, color: img.ColorRgb8(0, 0, 0));
+    img.drawString(c2, 'Thank you for your business', font: img.arial14, x: 24, y: 108, color: img.ColorRgb8(0, 0, 0));
+    cases.add(('synth_small_14px', encode(c2)));
+
+    // 3. Formulir multi-baris 24px.
+    final c3 = img.Image(width: 640, height: 480);
+    img.fill(c3, color: img.ColorRgb8(255, 255, 255));
+    img.drawString(c3, 'Name: Budi Santoso', font: img.arial24, x: 40, y: 60, color: img.ColorRgb8(0, 0, 0));
+    img.drawString(c3, 'Address: Jl. Merdeka No. 45', font: img.arial24, x: 40, y: 110, color: img.ColorRgb8(0, 0, 0));
+    img.drawString(c3, 'Phone: +62 812 3456 7890', font: img.arial24, x: 40, y: 160, color: img.ColorRgb8(0, 0, 0));
+    img.drawString(c3, 'DOB: 17-08-1945', font: img.arial24, x: 40, y: 210, color: img.ColorRgb8(0, 0, 0));
+    cases.add(('synth_form_24px', encode(c3)));
+
+    // 4. Kontras rendah (abu muda di abu) — simulasi scan pudar.
+    final c4 = img.Image(width: 640, height: 400);
+    img.fill(c4, color: img.ColorRgb8(215, 215, 215));
+    img.drawString(c4, 'LOW CONTRAST TEXT 456', font: img.arial24, x: 40, y: 160, color: img.ColorRgb8(165, 165, 165));
+    cases.add(('synth_low_contrast', encode(c4)));
+
+    // 5. Noise gaussian — simulasi foto kamera buruk.
+    final c5 = img.Image(width: 640, height: 400);
+    img.fill(c5, color: img.ColorRgb8(255, 255, 255));
+    img.drawString(c5, 'NOISY SCAN 789', font: img.arial48, x: 40, y: 150, color: img.ColorRgb8(0, 0, 0));
+    cases.add(('synth_noisy', encode(img.noise(c5, 28, type: img.NoiseType.gaussian))));
+
+    // 6. Rotasi kecil ~4 derajat — simulasi dokumen tidak lurus.
+    final c6 = img.Image(width: 760, height: 520);
+    img.fill(c6, color: img.ColorRgb8(255, 255, 255));
+    img.drawString(c6, 'ROTATED DOCUMENT 321', font: img.arial24, x: 80, y: 230, color: img.ColorRgb8(0, 0, 0));
+    cases.add(('synth_rotated_4deg', encode(img.copyRotate(c6, angle: 4))));
+
+    // 7. Kosong — harus gagal dengan NO_TEXT_DETECTED.
+    final c7 = img.Image(width: 640, height: 400);
+    img.fill(c7, color: img.ColorRgb8(255, 255, 255));
+    cases.add(('synth_blank', encode(c7)));
+
+    return cases;
   }
 
   void _onExternalScanRequest() {

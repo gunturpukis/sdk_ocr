@@ -5,6 +5,7 @@ import 'package:image/image.dart' as img;
  
 import '../models/ocr_result.dart';
 import 'ctc_decoder.dart';
+import 'input_normalizer.dart';
 import 'detection_postprocessing.dart';
 import 'image_preprocessing.dart';
 import 'inference_session.dart';
@@ -69,7 +70,11 @@ class PaddleOcrEngine implements OcrEngine {
  
     final stopwatch = Stopwatch()..start();
  
-    final image = img.decodeImage(imageBytes);
+    // Normalisasi input (decode + ekspansi palette/1-bit → RGB 8-bit +
+    // contrast stretch bila perlu). InputNormalizer.process mengembalikan
+    // null untuk bytes yang tidak bisa di-decode, termasuk PNG 1-bit yang
+    // membuat img.decodeImage() langsung melempar exception.
+    final image = InputNormalizer.process(imageBytes);
     if (image == null) {
       return const OcrResult(
         success: false,
@@ -107,16 +112,19 @@ class PaddleOcrEngine implements OcrEngine {
         y: box.y,
         width: box.width.clamp(1, image.width - box.x),
         height: box.height.clamp(1, image.height - box.y),
-      );
- 
-      final recInput = RecognitionPreprocessor.process(crop);
-      final recOutput = await _recSession!.run(recInput);
-      final recognized = CtcDecoder.decode(recOutput, _dict);
- 
-      if (recognized.text.trim().isEmpty) continue;
- 
-      lines.add(recognized.text);
-      confidences.add(recognized.confidence);
+      );      // Crop lebar (baris panjang hasil mergeSameLine) dipecah jadi
+      // beberapa strip TANPA squash — tiap strip direkognisi sendiri dan
+      // outputnya berurutan jadi beberapa baris.
+      final recInputs = RecognitionPreprocessor.processMulti(crop);
+      for (final recInput in recInputs) {
+        final recOutput = await _recSession!.run(recInput);
+        final recognized = CtcDecoder.decode(recOutput, _dict);
+
+        if (recognized.text.trim().isEmpty) continue;
+
+        lines.add(recognized.text);
+        confidences.add(recognized.confidence);
+      }
     }
  
     stopwatch.stop();

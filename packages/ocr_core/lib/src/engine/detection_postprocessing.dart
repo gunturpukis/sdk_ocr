@@ -49,7 +49,77 @@ class DetectionPostprocessor {
       }
     }
 
-    return boxes;
+    return mergeSameLine(boxes);
+  }
+
+  /// Gabungkan box yang sebaris (overlap vertikal cukup) dan berdekatan
+  /// secara horizontal. Det model (DB) cenderung memecah baris teks padat
+  /// menjadi beberapa fragmen pendek; model rec justru lebih akurat
+  /// membaca satu baris utuh daripada potongan-potongan (terlihat pada
+  /// benchmark dokumen print 300dpi: fragmen seperti "The(quick)[brown]").
+  ///
+  /// Murni list-in/list-out tanpa state supaya mudah di-unit-test.
+  static List<DetectedBox> mergeSameLine(List<DetectedBox> boxes) {
+    if (boxes.length < 2) return boxes;
+
+    // Urutan baca: atas ke bawah, lalu kiri ke kanan.
+    final sorted = [...boxes]..sort((a, b) {
+        final byY = a.y.compareTo(b.y);
+        return byY != 0 ? byY : a.x.compareTo(b.x);
+      });
+
+    final merged = <DetectedBox>[];
+    for (final box in sorted) {
+      var target = -1;
+      for (var i = 0; i < merged.length; i++) {
+        if (_shouldMerge(merged[i], box)) {
+          target = i;
+          break;
+        }
+      }
+      if (target >= 0) {
+        merged[target] = _union(merged[target], box);
+      } else {
+        merged.add(box);
+      }
+    }
+    return merged;
+  }
+
+  /// Dua box digabung kalau overlap vertikalnya >= 60% tinggi box
+  /// terkecil (sebaris) DAN jarak horizontalnya <= 2x tinggi rata-rata
+  /// (jarak antar-karakter/wantah dalam satu baris, bukan antar-baris
+  /// atau antar-kolom).
+  static const _mergeMinVertOverlap = 0.6;
+  static const _mergeMaxGapFactor = 2.0;
+
+  static bool _shouldMerge(DetectedBox a, DetectedBox b) {
+    final overlapTop = math.max(a.y, b.y);
+    final overlapBottom = math.min(a.y + a.height, b.y + b.height);
+    final vertOverlap = overlapBottom - overlapTop;
+    if (vertOverlap <= 0) return false;
+
+    final minH = math.min(a.height, b.height);
+    if (minH <= 0) return false;
+    if (vertOverlap / minH < _mergeMinVertOverlap) return false;
+
+    final gap = math.max(a.x - (b.x + b.width), b.x - (a.x + a.width));
+    final avgH = (a.height + b.height) / 2.0;
+    return gap <= avgH * _mergeMaxGapFactor;
+  }
+
+  static DetectedBox _union(DetectedBox a, DetectedBox b) {
+    final x = math.min(a.x, b.x);
+    final y = math.min(a.y, b.y);
+    final right = math.max(a.x + a.width, b.x + b.width);
+    final bottom = math.max(a.y + a.height, b.y + b.height);
+    return DetectedBox(
+      x: x,
+      y: y,
+      width: right - x,
+      height: bottom - y,
+      score: (a.score + b.score) / 2.0,
+    );
   }
 
   static List<int> _floodFill(
