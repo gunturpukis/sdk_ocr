@@ -15,7 +15,7 @@ export type OcrScanStatus = "idle" | "scanning" | "done" | "error";
  *   sampai config siap (conditional render), karena perubahan config object
  *   TIDAK diterapkan ke bridge yang sudah dibuat.
  */
-export declare function useOcrScanner(config: Omit<OcrScannerConfig, "onProgress" | "onLog" | "onReady" | "onCancel">): {
+export declare function useOcrScanner(config: Omit<OcrScannerConfig, "onProgress" | "onReady" | "onCancel">): {
     status: OcrScanStatus;
     progress: number;
     result: OcrResultPayload | null;

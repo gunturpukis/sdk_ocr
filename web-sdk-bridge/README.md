@@ -1,4 +1,4 @@
-# @yourorg/ocr-scanner-react
+# @gunturpukis/ocr-scanner-react
 
 SDK web untuk scan dokumen (OCR) di React / Next.js / vanilla JS — jembatan
 `postMessage` ke scanner Flutter Web (`apps/web_host`) yang di-embed sebagai
@@ -18,24 +18,53 @@ SDK web untuk scan dokumen (OCR) di React / Next.js / vanilla JS — jembatan
 
 ## Instalasi
 
-Package ini belum dipublish ke registry. Sementara pakai tarball lokal:
-
 ```bash
+# dari registry npm (setelah publish):
+npm i @gunturpukis/ocr-scanner-react
+
+# atau dari tarball lokal:
 cd web-sdk-bridge
-npm run build          # hasilkan dist/ (prepack juga otomatis jalan saat npm pack)
-npm pack               # buat yourorg-ocr-scanner-react-0.1.0.tgz
-```
-
-```bash
-# di project React/Next.js Anda:
-npm i /path/ke/web-sdk-bridge/yourorg-ocr-scanner-react-0.1.0.tgz
+npm pack               # buat gunturpukis-ocr-scanner-react-0.1.0.tgz
+npm i /path/ke/web-sdk-bridge/gunturpukis-ocr-scanner-react-0.1.0.tgz
 # atau: npm i file:../web-sdk-bridge   (monorepo)
 ```
 
-Sebelum publish ke registry (private npm/GitHub Packages), ganti:
-- `name` di `package.json` (bukan `@yourorg/...`),
-- hapus `"private": true`,
-- isi `repository`/`license`.
+## Publishing (npm)
+
+Package ini dipublikasikan sebagai **`@gunturpukis/ocr-scanner-react`** (MIT).
+
+**One-time setup di mesin Anda:**
+
+```bash
+npm login              # akun pemilik scope @gunturpukis; aktifkan 2FA
+npm publish --dry-run  # pratinjau: cek daftar file + metadata
+cd web-sdk-bridge && npm publish   # publish pertama (manual, butuh OTP 2FA)
+```
+
+> `publishConfig.access: "public"` sudah diset — scoped package tidak akan
+> ter-publish sebagai restricted.
+
+**Setup CI publish (sekali saja):**
+
+1. Buat npm *Automation* token: npmjs.com → Access Tokens → Generate (type
+   Automation — melewati OTP untuk publish dari CI).
+2. GitHub repo `gunturpukis/sdk_ocr` → Settings → Secrets and variables →
+   Actions → New repository secret: nama `NPM_TOKEN`, isi token tadi.
+
+**Rilis berikutnya (via Changesets):**
+
+```bash
+cd web-sdk-bridge
+npx changeset          # tulis perubahan + pilih patch/minor/major; commit file .md-nya
+npx changeset version  # bump package.json + tulis CHANGELOG.md
+npm publish            # publish manual, ATAU:
+git tag v$(node -p "require('./package.json').version") && git push --tags
+                       # → .github/workflows/release.yml publish otomatis (dgn provenance)
+```
+
+CI `.github/workflows/release.yml` menjaga tag harus sama dengan
+`package.json` version (fail-fast kalau mismatch) dan memverifikasi
+typecheck sebelum publish.
 
 ## Prasyarat (WAJIB berjalan dulu)
 
@@ -50,7 +79,7 @@ Sebelum publish ke registry (private npm/GitHub Packages), ganti:
 ## Pemakaian — React (Vite/CRA)
 
 ```tsx
-import { useOcrScanner } from "@yourorg/ocr-scanner-react";
+import { useOcrScanner } from "@gunturpukis/ocr-scanner-react";
 
 function ScanPage() {
   const { status, progress, result, error, readiness, open, close } = useOcrScanner({
@@ -91,7 +120,7 @@ scanner tidak masuk initial load:
 ```tsx
 // app/scan/ScanButton.tsx
 "use client";
-import { useOcrScanner } from "@yourorg/ocr-scanner-react";
+import { useOcrScanner } from "@gunturpukis/ocr-scanner-react";
 // ... (isi sama seperti contoh React di atas / examples/nextjs-usage.tsx)
 ```
 

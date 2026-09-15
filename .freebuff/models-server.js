@@ -6,7 +6,7 @@ const fs = require("fs");
 const path = require("path");
 
 const root = path.join(__dirname, "..", "services", "ocr-cloud-api", "models-cache");
-const types = { ".json": "application/json", ".txt": "text/plain", ".ort": "application/octet-stream" };
+const types = { ".json": "application/json", ".txt": "text/plain", ".ort": "application/octet-stream", ".js": "text/javascript", ".mjs": "text/javascript", ".wasm": "application/wasm" };
 
 http
   .createServer((req, res) => {

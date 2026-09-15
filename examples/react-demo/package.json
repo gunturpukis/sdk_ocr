@@ -1,0 +1,25 @@
+{
+  "name": "ocr-react-demo",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5173 --strictPort",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "sdk:tarball": "node scripts/use-tarball.mjs",
+    "sdk:registry": "node scripts/use-registry.mjs"
+  },
+  "dependencies": {
+    "@gunturpukis/ocr-scanner-react": "file:/Users/Guntur/Guntur/sdk_ocr/web-sdk-bridge/gunturpukis-ocr-scanner-react-0.1.0.tgz",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "typescript": "^5.5.4",
+    "vite": "^8.3.0"
+  }
+}

@@ -1,7 +1,25 @@
 {
-  "name": "@yourorg/ocr-scanner-react",
+  "name": "@gunturpukis/ocr-scanner-react",
   "version": "0.1.0",
-  "private": true,
+  "description": "React / Next.js bridge SDK for the OCR scanner Flutter web host — postMessage iframe bridge with hybrid on-device (onnxruntime-web) + cloud OCR.",
+  "license": "MIT",
+  "author": "Guntur",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gunturpukis/sdk_ocr.git",
+    "directory": "web-sdk-bridge"
+  },
+  "keywords": [
+    "ocr",
+    "scanner",
+    "document-scanner",
+    "react",
+    "nextjs",
+    "onnx",
+    "paddleocr",
+    "flutter",
+    "postmessage"
+  ],
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -14,18 +32,28 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "peerDependencies": {
     "react": ">=18"
   },
   "devDependencies": {
-    "typescript": "^5.5.0",
+    "@changesets/cli": "^2.31.1",
+    "@types/node": "^20.14.0",
     "@types/react": "^18.3.0",
-    "@types/node": "^20.14.0"
+    "typescript": "^5.5.0"
   },
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "prepack": "npm run build",
-    "prepublishOnly": "npm run typecheck && npm run build"
+    "prepublishOnly": "npm run typecheck && npm run build",
+    "changeset": "changeset",
+    "changeset:version": "changeset version",
+    "changeset:release": "changeset tag"
+  },
+  "dependencies": {
+    "@gunturpukis/ocr-scanner-react": "^0.1.0"
   }
 }

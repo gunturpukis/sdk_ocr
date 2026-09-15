@@ -2,7 +2,7 @@
 
 // Contoh pemakaian di Next.js App Router. Untuk production, ganti import di
 // bawah dengan nama package final Anda setelah dipublish.
-import { useOcrScanner } from "@yourorg/ocr-scanner-react";
+import { useOcrScanner } from "@gunturpukis/ocr-scanner-react";
 
 export function ScanButton() {
   const { status, progress, result, error, readiness, open } = useOcrScanner({

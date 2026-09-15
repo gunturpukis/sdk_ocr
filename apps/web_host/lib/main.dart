@@ -83,6 +83,7 @@ class _OcrWebHostAppState extends State<OcrWebHostApp> {
   // kalau field tidak ada di message.
   bool _forceCloud = false;
   OcrClient? _client;
+  bool _initInProgress = false;
   String? _initError;
 
   /// Test hook: counter request scan dari host (OCR_SCAN). _ScanHomeScreen
@@ -160,6 +161,17 @@ class _OcrWebHostAppState extends State<OcrWebHostApp> {
       });
       return;
     }
+    // Guard: scan saat init on-device masih berjalan akan langsung jatuh ke
+    // cloud (readiness default cloudOnlyFallback) dan gagal membingungkan
+    // (mis. 401 saat API key kosong). Tolak dengan pesan jelas — user cukup
+    // menunggu OCR_READY lalu scan lagi.
+    if (_initInProgress) {
+      _postToHost({
+        'type': 'OCR_ERROR',
+        'message': 'Scan ditolak: init on-device masih berjalan — tunggu OCR_READY lalu scan lagi.',
+      });
+      return;
+    }
     _scanRequests.value++;
   }
 
@@ -182,6 +194,11 @@ class _OcrWebHostAppState extends State<OcrWebHostApp> {
       return;
     }
  
+    if (_initInProgress) {
+      print('⚠️ OCR_INIT diabaikan: init sebelumnya masih berjalan');
+      return;
+    }
+    _initInProgress = true;
     try {
       // PENTING: baca langsung dari 'data' (top-level), BUKAN dari
       // data['payload'] — format OCR_INIT itu flat. Baca dari 'payload'
@@ -191,7 +208,7 @@ class _OcrWebHostAppState extends State<OcrWebHostApp> {
       final baseUrl = data['baseUrl'] as String?;
       final modelManifestUrl = data['modelManifestUrl'] as String?;
       final confidenceThreshold = (data['confidenceThreshold'] as num?)?.toDouble() ?? 85.0;
-      final forceCloud = data['forceCloud'] as bool? ?? false;
+      final forceCloud = data['forceCloud'] as bool? ?? true;
 
       // JANGAN log isi/panjang apiKey ke console — log ini terlihat di
       // DevTools browser user. Cukup indikator ada/tidaknya.
@@ -242,6 +259,8 @@ class _OcrWebHostAppState extends State<OcrWebHostApp> {
       if (!mounted) return;
       setState(() => _initError = e.toString());
       _postToHost({'type': 'OCR_ERROR', 'message': e.toString()});
+    } finally {
+      _initInProgress = false;
     }
   }
  

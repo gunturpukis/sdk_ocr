@@ -52,7 +52,11 @@
        build wasm single-thread ini; header itu baru perlu kalau memakai
        varian WASM threads (lihat README web-sdk-bridge).
   -->
-  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.min.js"></script>
+  <!-- wasmPaths mengarah ke models server (atau CDN Anda sendiri) supaya
+       ort.min.js TIDAK mem-fetch .wasm pendamping dari jsdelivr —
+       single source of truth + tidak tergantung network pihak ketiga. -->
+  <script>ort = { env: { wasm: { wasmPaths: 'http://localhost:9090/ort/' } } };</script>
+  <script src="http://localhost:9090/ort/ort.min.js"></script>
 </head>
 <body>
   <!--

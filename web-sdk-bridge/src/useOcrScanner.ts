@@ -23,7 +23,7 @@ export type OcrScanStatus = "idle" | "scanning" | "done" | "error";
  *   sampai config siap (conditional render), karena perubahan config object
  *   TIDAK diterapkan ke bridge yang sudah dibuat.
  */
-export function useOcrScanner(config: Omit<OcrScannerConfig, "onProgress" | "onLog" | "onReady" | "onCancel">) {
+export function useOcrScanner(config: Omit<OcrScannerConfig, "onProgress" | "onReady" | "onCancel">) {
   const bridgeRef = useRef<OcrScannerBridge | null>(null);
   const [status, setStatus] = useState<OcrScanStatus>("idle");
   const [progress, setProgress] = useState(0);
