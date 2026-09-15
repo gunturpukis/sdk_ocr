@@ -1,116 +1,109 @@
-# OCR SDK — ocr_core + ocr_ui
+# SDK OCR — on-device + cloud, Flutter & Web
 
-Monorepo dua package Flutter:
-- **`packages/ocr_core`** — logic murni (tanpa opini UI): model download/cache,
-  inference PaddleOCR (deteksi + rekognisi), decision hybrid on-device/cloud.
-- **`packages/ocr_ui`** — layar scan siap pakai di atas `ocr_core` (opsional,
-  boleh di-skip kalau mau bikin UI sendiri di atas `ocr_core` langsung).
+Monorepo SDK scan dokumen (OCR) hybrid: **on-device dulu** (PaddleOCR via ONNX
+Runtime), **fallback cloud** bila confidence di bawah ambang atau init gagal.
+Satu kontrak respons untuk semua platform.
 
-## ⚠️ Status kode ini — baca sebelum lanjut
+| Komponen | Path | Fungsi |
+|---|---|---|
+| **ocr_core** | `packages/ocr_core` | Logic murni: model manager (download+SHA256+cache), inference det+rec, normalisasi input, hybrid decision. Tanpa opini UI. |
+| **ocr_ui** | `packages/ocr_ui` | Layar scan Flutter siap pakai (kamera, overlay, confidence badge) — opsional. |
+| **Web SDK (npm)** | `web-sdk-bridge` | `@gunturpukis/ocr-scanner-react` — bridge postMessage framework-agnostic + hook React. |
+| **Flutter web host** | `apps/web_host` | Scanner full-screen yang di-embed sebagai iframe oleh Web SDK. |
+| **Cloud OCR API** | `services/ocr-cloud-api` | Node/Express: PaddleOCR server-side, auth Bearer, rate limit, CORS. |
+| **Demo** | `examples/react-demo` | Contoh consumer React yang live. |
 
-Saya menulis semua ini **tanpa akses ke Flutter SDK/compiler** (sandbox saya
-tidak punya Flutter terinstall), jadi kode ini **belum pernah di-compile atau
-dijalankan sama sekali**. Anggap ini sebagai scaffold arsitektur yang solid,
-bukan kode yang siap `flutter run` tanpa iterasi. Yang paling perlu Anda
-validasi duluan:
+## Status (hasil audit 2026-09 — lihat `docs/AUDIT.md`)
 
-1. **`flutter_onnxruntime` API exact** (`inference_session_mobile.dart`) —
-   saya tulis berdasarkan contoh dari dokumentasi yang saya baca
-   (`createSessionFromAsset`, dst), tapi belum saya cek detail nama method
-   untuk load dari file path (`createSessionFromFile`) dan cara ambil output
-   tensor (`asFlattenedDataList`) — cek langsung ke source/API docs package
-   itu, kemungkinan ada penyesuaian nama method.
-2. **`onnxruntime-web` JS interop** (`inference_session_web.dart`) — sama,
-   signature `ort.InferenceSession`/`ort.Tensor` perlu dicocokkan ke versi
-   yang benar-benar Anda pakai.
-3. **`DetectionPostprocessor`** — ini **penyederhanaan besar** dari algoritma
-   DB asli PaddleOCR (axis-aligned box, bukan rotated rect + unclip pakai
-   pyclipper). Cukup untuk dokumen yang di-scan relatif lurus, tapi kalau
-   akurasi kurang bagus di real testing, di sinilah kemungkinan besar
-   sumbernya — lihat komentar di file itu untuk detail trade-off-nya.
-4. **Belum ada unit test sama sekali** — prioritas berikutnya sebelum
-   nulis fitur baru lagi.
+- ✅ **Jalur web tervalidasi end-to-end**: 31/31 unit test `ocr_core`, scan live
+  di browser (on-device conf 96–100%, fallback cloud terlog), batched recognition
+  aktif, normalisasi input memperbaiki dokumen padat (62 → 99+).
+- ✅ **Web SDK siap publish**: scoped npm, MIT, CI typecheck, release otomatis
+  dari tag `v*` dengan provenance, changesets.
+- ⚠️ **Jalur mobile belum pernah dijalankan di perangkat asli** — arsitektur
+  benar, tapi API `flutter_onnxruntime` wajib diverifikasi dulu
+  (langkahnya ada di panduan mobile).
 
-## Yang sudah solid (hasil diskusi + validasi sebelumnya)
+## Mulai cepat
 
-- Unified response contract (`OcrResult`) dan flow hybrid on-device→cloud
-  fallback dengan confidence threshold — ini sudah dipikirkan matang dari
-  awal desain, bukan tempelan.
-- `ppu-paddle-ocr` (package Node/JS yang sempat kita coba jalankan) terbukti
-  real dan berfungsi — model-nya (format `.ort`) dan sumbernya (GitHub LFS
-  `ppu-paddle-ocr-models`) itu referensi valid untuk model yang dipakai di
-  `ModelManager` Anda, meskipun implementasi inference session di kode ini
-  saya tulis manual (bukan pakai package itu), supaya Anda tidak bergantung
-  ke library JS pihak ketiga di jalur kritis.
-- Conditional export mobile/Web sudah konsisten diterapkan di semua tempat
-  yang butuh (`ModelManager`, `InferenceSession`, `LocalTextReader`) — tidak
-  ada `dart:io` yang bocor ke build Web.
+Pilih platform Anda:
 
-## Setup
+| Platform | Panduan |
+|---|---|
+| Flutter (iOS/Android) | [`docs/guides/MOBILE.md`](docs/guides/MOBILE.md) |
+| React (Vite/CRA) | [`docs/guides/REACT.md`](docs/guides/REACT.md) |
+| Next.js (App Router) | [`docs/guides/NEXTJS.md`](docs/guides/NEXTJS.md) |
+| Vue 3 / Nuxt 3 | [`docs/guides/VUE.md`](docs/guides/VUE.md) |
+
+### Contoh 30 detik (React)
+
+```tsx
+import { useOcrScanner } from "@gunturpukis/ocr-scanner-react";
+
+const { status, progress, result, open } = useOcrScanner({
+  iframeUrl: "https://scan.yourapp.com",       // Flutter web host (HTTPS)
+  proxyBaseUrl: "/api/ocr",                    // proxy backend Anda (menyuntik auth)
+  modelManifestUrl: "https://cdn.yourapp.com/models.json",
+  confidenceThreshold: 85,
+  forceCloud: false,                           // hybrid: on-device dulu
+});
+
+<button onClick={() => open().catch(() => {})} disabled={status === "scanning"}>
+  {status === "scanning" ? `Memindai… ${Math.round(progress * 100)}%` : "Scan Dokumen"}
+</button>
+{result?.success && <pre>{result.data.rawText}</pre>}
+```
+
+## Infrastruktur yang dibutuhkan (semua platform)
+
+1. **Model hosting** — `models.json` + file `.ort` di CDN Anda (format manifest
+   ada di `packages/ocr_core/lib/src/models/model_manifest.dart`; contoh nyata di
+   `services/ocr-cloud-api/models-cache/`). Model ±139MB, di-download sekali
+   per device/browser, diverifikasi SHA256.
+2. **Flutter web host di HTTPS** (untuk jalur web) — build `apps/web_host` dan
+   hosting folder `build/web/`.
+3. **Cloud API** (untuk fallback) — deploy `services/ocr-cloud-api`, set
+   `OCR_API_KEY` + `CORS_ALLOWED_ORIGINS` (whitelist origin *iframe* web host).
+4. **Backend proxy** (production web) — backend Anda sendiri yang menyuntikkan
+   `Authorization` ke cloud API; key tidak pernah sampai browser.
+
+## Development lokal (repo ini)
 
 ```bash
-cd packages/ocr_core && flutter pub get
-cd ../ocr_ui && flutter pub get
+# cloud API (fallback) — :3000
+cd services/ocr-cloud-api && npm install && npm start
+
+# models server dev — :9090 (serve models.json + model + ort)
+node .freebuff/models-server.js
+
+# Flutter web host — :8080
+cd apps/web_host && flutter run -d web-server --web-port 8080
+
+# demo React — :5173
+cd examples/react-demo && npm install && npm run dev
 ```
 
-### Model hosting (wajib sebelum SDK bisa jalan)
+Detail lengkap (launchd, release build, env) ada di `.freebuff/run.md`.
 
-1. Download model dari `ppu-paddle-ocr-models` (format `.ort`, atau varian
-   `.onnx` portable) — jangan langsung pakai URL GitHub LFS mereka di
-   production (lihat diskusi sebelumnya soal bandwidth quota).
-2. Upload ke CDN Anda sendiri (S3/R2/MinIO).
-3. Generate `models.json` — hitung SHA256 tiap file, isi sesuai format di
-   `model_manifest.dart`.
-4. Pass URL manifest itu ke `OcrClient(modelManifestUrl: ...)`.
+## Testing
 
-### Web — tambahan di `web/index.html`
-
-```html
-<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
+```bash
+cd packages/ocr_core && flutter test     # 31 test: normalizer, box merging, batching, policy
+cd web-sdk-bridge && npm run typecheck
+cd examples/react-demo && npx tsc --noEmit
 ```
 
-## Pemakaian dasar
+## Kontribusi / rilis
 
-```dart
-import 'package:ocr_ui/ocr_ui.dart';
-import 'package:ocr_core/ocr_core.dart';
+Changesets untuk versioning web SDK:
 
-final client = OcrClient(
-  apiKey: 'xxx',
-  baseUrl: 'https://ocr-api.example.com',
-  modelManifestUrl: 'https://cdn.example.com/models/models.json',
-);
-
-// panggil sekali di awal (splash screen / sebelum buka scan screen)
-await client.prepare(
-  onProgress: (p) => print('Download model: ${(p * 100).toStringAsFixed(0)}%'),
-);
-
-// pakai UI siap pakai
-Navigator.push(context, MaterialPageRoute(
-  builder: (_) => OcrScanScreen(
-    client: client,
-    onResult: (result) {
-      if (result.success) print(result.rawText);
-    },
-  ),
-));
-
-// ATAU pakai ocr_core langsung tanpa ocr_ui, kalau mau UI custom
-final result = await client.scan(imageBytesFromCameraAnda);
+```bash
+cd web-sdk-bridge
+npx changeset            # tulis perubahan (patch/minor/major)
+npx changeset version    # bump + CHANGELOG
+git tag v$(node -p "require('./package.json').version") && git push --tags
+# → .github/workflows/release.yml publish ke npm (provenance) otomatis
 ```
 
-## Langkah selanjutnya yang saya sarankan (urutan prioritas)
-
-1. `flutter pub get` di kedua package, perbaiki error compile yang muncul
-   (kemungkinan besar di `inference_session_mobile.dart`/`_web.dart` sesuai
-   catatan di atas).
-2. Test `initialize()` dengan model asli — pastikan shape tensor
-   input/output cocok dengan asumsi di `image_preprocessing.dart` dan
-   `ctc_decoder.dart` (tiap versi model PaddleOCR bisa beda urutan
-   dimensi/dictionary).
-3. Test `recognize()` dengan foto dokumen asli, bandingkan
-   `DetectionPostprocessor` terhadap ekspektasi (apakah box yang terdeteksi
-   masuk akal).
-4. Baru lanjut ke document-specific parsing (KTP/SIM field extraction) di
-   atas `rawText` yang sudah didapat.
+CI (`.github/workflows/`): typecheck + pack smoke untuk web SDK; release
+tag-gated dengan guard tag↔version.
